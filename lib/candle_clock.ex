@@ -1,0 +1,2 @@
+defmodule CandleClock do
+end

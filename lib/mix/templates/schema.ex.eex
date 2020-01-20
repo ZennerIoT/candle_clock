@@ -1,0 +1,35 @@
+defmodule <%= schema_name(assigns) %> do
+  use Ecto.Schema
+
+  schema "<%= table_name(assigns) %>" do
+    # mfa to call whenever the timer expires
+    field :module, CandleClock.AtomType
+    field :function, CandleClock.AtomType
+    field :arguments, CandleClock.ErlangTermType
+
+    # calculated from interval, crontab or the duration
+    field :expires_at, <%= datetime_type(assigns) %>
+
+    # Set when created via call_after
+    field :duration, :integer # milliseconds
+
+    # Set when created via call_interval
+    field :interval, :integer # milliseconds
+
+    # Set when created via call_crontab
+    field :crontab, CandleClock.CronTabType
+
+    # Records how often the timer was called
+    field :calls, :integer, default: 0
+
+    # Limits how often this timer can be called before it's cancelled
+    field :max_calls, :integer
+    
+    # if not null, the name field can be used to make a timer unique
+    # when starting a timer for a name, and a timer with that name already exists,
+    # the existing timer will be cancelled
+    field :name, :string
+
+    timestamps(type: <%= datetime_type(assigns) %>)
+  end
+end

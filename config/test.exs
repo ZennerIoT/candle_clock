@@ -5,5 +5,5 @@ config :candle_clock, CandleClock.Repo,
   username: "postgres",
   password: "postgres",
   database: "candle_clock_test",
-  hostname: "localhost",
-  pool: Ecto.Adapters.SQL.Sandbox
+  hostname: "localhost"
+

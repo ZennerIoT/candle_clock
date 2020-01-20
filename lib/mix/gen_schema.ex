@@ -11,7 +11,7 @@ defmodule Mix.Tasks.CandleClock.Gen.Schema do
     assigns = %{
       schema_name: "CandleClock.Timer",
       table_name: "candle_clock_timers",
-      datetime_type: ":utc_datetime"
+      datetime_type: ":utc_datetime_usec"
     }
 
     code = render_schema(assigns)

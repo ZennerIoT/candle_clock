@@ -17,18 +17,28 @@ defmodule <%= schema_name(assigns) %> do
     field :interval, :integer # milliseconds
 
     # Set when created via call_crontab
-    field :crontab, CandleClock.CronTabType
+    field :crontab, Crontab.CronExpression.Ecto.Type
+
+    # Timezone that should be used for crontab
+    field :crontab_timezone, :string
 
     # Records how often the timer was called
     field :calls, :integer, default: 0
 
     # Limits how often this timer can be called before it's cancelled
     field :max_calls, :integer
+
+    # If true, interval-based timers will skip a call if they couldn't be called
+    # during a downtime
+    field :skip_if_offline, :boolean, default: true
     
     # if not null, the name field can be used to make a timer unique
     # when starting a timer for a name, and a timer with that name already exists,
     # the existing timer will be cancelled
     field :name, :string
+
+    # whether this timer is currently being executed
+    field :executing, :boolean, default: false
 
     timestamps(type: <%= datetime_type(assigns) %>)
   end

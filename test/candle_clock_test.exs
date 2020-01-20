@@ -35,11 +35,11 @@ defmodule CandleClockTest do
     }
 
     start_at = ~U"2020-04-01 00:00:00Z"
-    expected = ~U[2020-04-15 10:00:00Z]
+    expected = ~U[2020-04-15 10:00:00.000000Z]
 
     assert {:ok, ^expected} = CandleClock.next_expiry(timer, start_at)
 
-    expected = ~U[2020-01-15 11:00:00Z]
+    expected = ~U[2020-01-15 11:00:00.000000Z]
     assert {:ok, ^expected} = CandleClock.next_expiry(%{timer | skip_if_offline: false}, start_at)
   end
 end

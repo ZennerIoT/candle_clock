@@ -30,10 +30,12 @@ defmodule CandleClock do
   end
 
   def call_crontab(mfa, crontab, timezone \\ "Etc/UTC") do
-    create(mfa, %{
-      crontab: Crontab.CronExpression.Parser.parse!(crontab),
-      crontab_timezone: timezone
-    })
+    with {:ok, crontab} <- Crontab.CronExpression.Parser.parse(crontab) do
+      create(mfa, %{
+        crontab: crontab,
+        crontab_timezone: timezone
+      })
+    end
   end
 
   def cancel_by_id(id) do
@@ -63,6 +65,7 @@ defmodule CandleClock do
 
     with {:ok, expires_at} <- next_expiry(timer, now),
          timer = Map.put(timer, :expires_at, expires_at),
+         IO.inspect(timer),
          {:ok, timer} <- repo().insert(timer),
          refresh_next_timer() do
       {:ok, timer}
@@ -93,12 +96,11 @@ defmodule CandleClock do
         {:ok, res}
 
       %{crontab: crontab} when not is_nil(crontab) ->
-
         with {:ok, date} <- DateTime.shift_zone(date, timer.crontab_timezone),
              naive = DateTime.to_naive(date),
              {:ok, naive} <- Crontab.Scheduler.get_next_run_date(crontab, naive),
              {:ok, with_tz} <- DateTime.from_naive(naive, timer.crontab_timezone) do
-          with_tz = Map.put(with_tz, :microsecond, {0, 0})
+          with_tz = Map.put(with_tz, :microsecond, {0, 6})
           DateTime.shift_zone(with_tz, "Etc/UTC")
         end
     end

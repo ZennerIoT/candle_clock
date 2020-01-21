@@ -11,6 +11,7 @@ defmodule CandleClockTest do
     }
 
     assert {:ok, ~U[2020-01-01T13:01:00Z]} = CandleClock.next_expiry(timer, ~U[2020-01-01T13:00:00Z])
+    assert {:ok, ~U[2020-01-01T13:01:00Z]} = CandleClock.next_expiry(timer, ~U[2020-02-01T00:00:00Z])
   end
 
   test "can calculate expiry from interval" do
@@ -22,7 +23,8 @@ defmodule CandleClockTest do
     }
 
     assert {:ok, ~U[2020-01-01T13:00:35Z]} = CandleClock.next_expiry(timer, ~U[2020-01-01T13:00:30Z])
-    assert {:ok, ~U[2020-01-01T14:00:00Z]} = CandleClock.next_expiry(%{timer | calls: 0}, ~U[2020-01-01T14:00:00Z])
+    assert {:ok, ~U[2020-01-01T12:00:05Z]} = CandleClock.next_expiry(%{timer | calls: 0}, ~U[2020-01-01T14:00:00Z])
+    assert {:ok, ~U[2020-01-01T14:00:05Z]} = CandleClock.next_expiry(%{timer | calls: 1}, ~U[2020-01-01T14:00:00Z])
     assert {:ok, ~U[2020-01-01T12:00:05Z]} = CandleClock.next_expiry(%{timer | calls: 0, skip_if_offline: false}, ~U[2020-01-01T14:00:00Z])
     assert {:ok, ~U[2020-01-01T12:00:05Z]} = CandleClock.next_expiry(%{timer | calls: 0}, ~U[2020-01-01T12:00:00Z])
   end

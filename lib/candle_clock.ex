@@ -83,12 +83,7 @@ defmodule CandleClock do
     case timer do
       %{duration: duration, calls: 0} when not is_nil(duration) ->
         next = DateTime.add(timer.inserted_at, duration, :millisecond)
-        res = case DateTime.compare(date, next) do
-          :eq -> date
-          :lt -> next
-          :gt -> date
-        end
-        {:ok, res}
+        {:ok, next}
 
       %{interval: interval, calls: calls} when not is_nil(interval) and calls >= 1 ->
         start_at = DateTime.add(timer.inserted_at, timer.duration, :millisecond)

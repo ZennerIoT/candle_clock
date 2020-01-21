@@ -29,5 +29,7 @@ defmodule <%= @module_prefix %>.CreateCandleClockTimerTable do
 
       timestamps(type: <%= db_datetime_type(assigns) %>)
     end
+
+    create unique_index("<%= table_name(assigns) %>", :name)
   end
 end

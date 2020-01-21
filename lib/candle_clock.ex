@@ -13,28 +13,28 @@ defmodule CandleClock do
     Application.get_env(:candle_clock, :repo, CandleClock.Repo)
   end
 
-  @spec call_after(mf_args, interval) :: {:ok, struct} | {:error, any}
-  def call_after(mfa, duration) do
+  @spec call_after(mf_args, interval, keyword) :: {:ok, struct} | {:error, any}
+  def call_after(mfa, duration, opts \\ []) do
     create(mfa, %{
       duration: duration,
       max_calls: 1
-    })
+    }, opts)
   end
 
-  def call_interval(mfa, duration \\ nil, interval) do
+  def call_interval(mfa, duration \\ nil, interval, opts \\ []) do
     duration = duration || interval
     create(mfa, %{
       duration: duration,
       interval: interval
-    })
+    }, opts)
   end
 
-  def call_crontab(mfa, crontab, timezone \\ "Etc/UTC") do
+  def call_crontab(mfa, crontab, timezone \\ "Etc/UTC", opts \\ []) do
     with {:ok, crontab} <- Crontab.CronExpression.Parser.parse(crontab) do
       create(mfa, %{
         crontab: crontab,
         crontab_timezone: timezone
-      })
+      }, opts)
     end
   end
 
@@ -50,8 +50,8 @@ defmodule CandleClock do
 
   end
 
-  @spec create(mf_args, map) :: {:ok, struct} | {:error, term}
-  defp create({m, f, a}, params) do
+  @spec create(mf_args, map, keyword) :: {:ok, struct} | {:error, term}
+  defp create({m, f, a}, params, opts) do
     now = DateTime.utc_now()
     defaults = %{
       module: m,
@@ -60,13 +60,12 @@ defmodule CandleClock do
       inserted_at: now,
       updated_at: now
     }
-    params = Map.merge(defaults, params)
+    params = Enum.reduce([Enum.into(opts, %{}), defaults, params], %{}, &Map.merge/2)
     timer = struct(timer_schema(), params)
 
     with {:ok, expires_at} <- next_expiry(timer, now),
          timer = Map.put(timer, :expires_at, expires_at),
-         IO.inspect(timer),
-         {:ok, timer} <- repo().insert(timer),
+         {:ok, timer} <- repo().insert(timer, on_conflict: :replace_all, conflict_target: [:name]),
          refresh_next_timer() do
       {:ok, timer}
     end

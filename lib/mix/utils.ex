@@ -1,4 +1,6 @@
 defmodule CandleClock.MixTasks.Utils do
+  @moduledoc false
+
   def write(filename, code, opts) do
     if not File.exists?(filename) or Keyword.get(opts, :overwrite, false) do
       File.write!(filename, code)

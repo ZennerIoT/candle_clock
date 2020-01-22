@@ -1,4 +1,5 @@
 defmodule CandleClock.ErlangTermType do
+  @moduledoc false
   use Ecto.Type
 
   def type, do: :binary

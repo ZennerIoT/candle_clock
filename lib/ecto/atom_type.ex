@@ -1,4 +1,5 @@
 defmodule CandleClock.AtomType do
+  @moduledoc false
   use Ecto.Type
 
   def type, do: :string

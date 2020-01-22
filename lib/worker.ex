@@ -8,8 +8,21 @@ defmodule CandleClock.Worker do
 
   @execution_threshold 150
 
+  @moduledoc """
+  Waits until timers expire and calls them.
+
+  Add this module to your supervisor-tree once.
+  """
+
+  @doc """
+  Starts the CandleClock worker.
+  """
   def start_link() do
     GenServer.start_link(__MODULE__, [], name: __MODULE__)
+  end
+
+  def start_link(_) do
+    start_link()
   end
 
   defstruct [
@@ -17,23 +30,30 @@ defmodule CandleClock.Worker do
     :task_ref
   ]
 
+  @doc """
+  Refreshes the internal timer until the next invocation for the current node.
+  """
   def refresh() do
     GenServer.call(__MODULE__, :refresh_next_trigger)
   end
 
+  @doc false
   def init([]) do
     {:ok, %__MODULE__{}, {:continue, []}}
   end
 
+  @doc false
   def handle_continue(_, state) do
     state = refresh_next_trigger(state)
     {:noreply, state}
   end
 
+  @doc false
   def handle_call(:refresh_next_trigger, _from, state) do
     {:reply, :ok, refresh_next_trigger(state)}
   end
 
+  @doc false
   def handle_info(:execute_timers, state) do
     state =
       state

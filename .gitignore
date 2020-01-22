@@ -28,3 +28,5 @@ test/support/schema.ex
 
 # ignore elixir LS
 .elixir_ls/
+
+.vscode/

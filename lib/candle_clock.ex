@@ -130,51 +130,6 @@ defmodule CandleClock do
     end
   end
 
-  @doc """
-  Cancels a timer by its ID.
-
-  Returns `{:ok, 1}` if the ID matched.
-  """
-  @spec cancel_by_id(any) :: {:ok, non_neg_integer}
-  def cancel_by_id(id) do
-    query = from t in timer_schema(),
-      where: t.id == ^id
-    cancel_by_query(query)
-  end
-
-  @doc """
-  Cancels the timer with the given name.
-
-  Returns `{:ok, 1}` if a timer with that name was found.
-  """
-  @spec cancel_by_name(String.t) :: {:ok, non_neg_integer}
-  def cancel_by_name(name) do
-    query = from t in timer_schema(),
-      where: t.name == ^name
-    cancel_by_query(query)
-  end
-
-  @doc """
-  Cancels all timers that call the given module and function.
-
-  Returns `{:ok, amount}` if successful, where amount is the number of timers
-  that were cancelled.
-  """
-  @spec cancel_all(module, atom) :: {:ok, non_neg_integer}
-  def cancel_all(module, function) do
-    query = from t in timer_schema(),
-      where: t.module == ^module,
-      where: t.function == ^function
-    cancel_by_query(query)
-  end
-
-  defp cancel_by_query(query) do
-    {num, _} = repo().delete_all(query)
-    Logger.debug("Cancelled #{num} timers")
-    refresh_next_timer()
-    {:ok, num}
-  end
-
   @spec create(mf_args, map, keyword) :: {:ok, struct} | {:error, term}
   defp create({m, f, a}, params, opts) do
     now = DateTime.utc_now()
@@ -196,8 +151,78 @@ defmodule CandleClock do
     end
   end
 
+  @doc """
+  Cancels a timer by its ID.
+
+  Returns `{:ok, 1}` if the ID matched.
+  """
+  @spec cancel_by_id(any) :: {:ok, non_neg_integer}
+  def cancel_by_id(id) do
+    cancel_by_query(id_query(id))
+  end
+
+  @doc """
+  Cancels the timer with the given name.
+
+  Returns `{:ok, 1}` if a timer with that name was found.
+  """
+  @spec cancel_by_name(String.t) :: {:ok, non_neg_integer}
+  def cancel_by_name(name) do
+    cancel_by_query(name_query(name))
+  end
+
+  @doc """
+  Cancels all timers that call the given module and function.
+
+  Returns `{:ok, amount}` if successful, where amount is the number of timers
+  that were cancelled.
+  """
+  @spec cancel_all(module, atom) :: {:ok, non_neg_integer}
+  def cancel_all(module, function) do
+    cancel_by_query(mf_query(module, function))
+  end
+
+  defp cancel_by_query(query) do
+    {num, _} = repo().delete_all(query)
+    Logger.debug("Cancelled #{num} timers")
+    refresh_next_timer()
+    {:ok, num}
+  end
+
   defp refresh_next_timer() do
     :rpc.multicall(CandleClock.Worker, :refresh, [])
+  end
+
+  @doc """
+  Returns if a timer with the given name exists
+  """
+  @spec name_exists?(String.t) :: boolean
+  def name_exists?(name) do
+    repo().exists?(name_query(name))
+  end
+
+  @doc """
+  Returns if a timer with the given id exists
+  """
+  @spec id_exists?(any) :: boolean
+  def id_exists?(id) do
+    repo().exists?(id_query(id))
+  end
+
+  defp name_query(name) do
+    from t in timer_schema(),
+      where: t.name == ^name
+  end
+
+  defp mf_query(module, function) do
+    from t in timer_schema(),
+      where: t.module == ^module,
+      where: t.function == ^function
+  end
+
+  defp id_query(id) do
+    from t in timer_schema(),
+      where: t.id == ^id
   end
 
 

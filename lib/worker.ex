@@ -28,7 +28,8 @@ defmodule CandleClock.Worker do
 
   defstruct [
     :timer_ref,
-    :task_ref
+    :task_ref,
+    :expires_at
   ]
 
   def next_expiry_query() do
@@ -54,6 +55,10 @@ defmodule CandleClock.Worker do
     end
   end
 
+  def set_next_expiry(expires_at) do
+    GenServer.call(__MODULE__, {:set_next_expiry, expires_at})
+  end
+
   @doc false
   def init([]) do
     {:ok, %__MODULE__{}, {:continue, []}}
@@ -67,7 +72,20 @@ defmodule CandleClock.Worker do
 
   @doc false
   def handle_call({:set_next_expiry, expires_at}, _from, state) do
-    {:reply, :ok, start_timer(state, expires_at)}
+    state = case state.expires_at do
+      nil ->
+        start_timer(state, expires_at)
+
+      old_expires_at ->
+        case DateTime.compare(old_expires_at, expires_at) do
+          :gt ->
+            start_timer(state, expires_at)
+
+          _lt_or_eq ->
+            state
+        end
+    end
+    {:reply, :ok, state}
   end
 
   @doc false
@@ -108,7 +126,7 @@ defmodule CandleClock.Worker do
       diff when diff > @execution_threshold ->
         Logger.debug("next expiry at #{expires_at} in #{diff} ms")
         {:ok, ref} = :timer.send_after(diff, :execute_timers)
-        %{state | timer_ref: ref}
+        %{state | timer_ref: ref, expires_at: expires_at}
 
       diff ->
         Logger.debug("while refreshing next expiry, we found timers that expired #{diff} ms in the past")
@@ -188,6 +206,6 @@ defmodule CandleClock.Worker do
       repo().update_all(query, [])
     end
 
-    state
+    %{ state | expires_at: nil }
   end
 end

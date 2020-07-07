@@ -146,7 +146,7 @@ defmodule CandleClock do
     with {:ok, expires_at} <- next_expiry(timer, now),
          timer = Map.put(timer, :expires_at, expires_at),
          {:ok, timer} <- repo().insert(timer, on_conflict: :replace_all, conflict_target: [:name]),
-         refresh_next_timer() do
+         refresh_next_timer(expires_at) do
       {:ok, timer}
     end
   end
@@ -191,6 +191,10 @@ defmodule CandleClock do
 
   defp refresh_next_timer() do
     :rpc.multicall(CandleClock.Worker, :refresh, [])
+  end
+
+  defp refresh_next_timer(expires_at) do
+    :rpc.multicall(CandleClock.Worker, :set_next_expiry, [expires_at])
   end
 
   @doc """

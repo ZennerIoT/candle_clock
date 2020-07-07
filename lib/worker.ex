@@ -1,5 +1,6 @@
 defmodule CandleClock.Worker do
   use GenServer
+  import CandleClock.ErrorLogger
 
   import Ecto.Query
   import CandleClock, only: [timer_schema: 0, repo: 0]
@@ -143,7 +144,17 @@ defmodule CandleClock.Worker do
     # TODO use a pool
     # TODO what to do with the result? ignore?
     Logger.debug("executing timer #{inspect timer.module}.#{timer.function}(#{Enum.join(Enum.map(timer.arguments, &inspect/1), ", ")})")
-    Task.start(timer.module, timer.function, timer.arguments)
+    Task.start(fn ->
+      try do
+        apply(timer.module, timer.function, timer.arguments)
+      rescue
+        error ->
+          log_error_raw("[CandleClock] Timer execution failed:", :error, error, :error, timer: timer)
+      catch
+        kind, error ->
+          log_error_raw("[CandleClock] Timer execution failed:", kind, error, :error, timer: timer)
+      end
+    end)
 
     {:ok, expires_at} = CandleClock.next_expiry(timer)
     diff = DateTime.diff(expires_at, DateTime.utc_now(), :millisecond)

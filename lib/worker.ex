@@ -177,6 +177,6 @@ defmodule CandleClock.Worker do
       repo().update_all(query, [])
     end
 
-    state
+    refresh_next_trigger(state)
   end
 end

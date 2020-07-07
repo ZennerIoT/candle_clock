@@ -31,11 +31,27 @@ defmodule CandleClock.Worker do
     :task_ref
   ]
 
+  def next_expiry_query() do
+    from t in timer_schema(),
+      select: t.expires_at,
+      where: not t.executing,
+      order_by: [asc: t.expires_at],
+      limit: 1
+  end
+
   @doc """
   Refreshes the internal timer until the next invocation for the current node.
   """
   def refresh() do
-    GenServer.call(__MODULE__, :refresh_next_trigger)
+    query = next_expiry_query()
+
+    case repo().one(query) do
+      nil ->
+        {:ok, nil}
+
+      expires_at ->
+        GenServer.call(__MODULE__, {:set_next_expiry, expires_at})
+    end
   end
 
   @doc false
@@ -50,8 +66,8 @@ defmodule CandleClock.Worker do
   end
 
   @doc false
-  def handle_call(:refresh_next_trigger, _from, state) do
-    {:reply, :ok, refresh_next_trigger(state)}
+  def handle_call({:set_next_expiry, expires_at}, _from, state) do
+    {:reply, :ok, start_timer(state, expires_at)}
   end
 
   @doc false
@@ -67,11 +83,7 @@ defmodule CandleClock.Worker do
   defp refresh_next_trigger(state) do
     state = stop_timer(state)
 
-    query = from t in timer_schema(),
-      select: t.expires_at,
-      where: not t.executing,
-      order_by: [asc: t.expires_at],
-      limit: 1
+    query = next_expiry_query()
 
     case repo().one(query) do
       nil ->
@@ -140,7 +152,6 @@ defmodule CandleClock.Worker do
   end
 
   defp execute_timer(state, timer) do
-    import Ecto.Changeset
     # TODO use a pool
     # TODO what to do with the result? ignore?
     Logger.debug("executing timer #{inspect timer.module}.#{timer.function}(#{Enum.join(Enum.map(timer.arguments, &inspect/1), ", ")})")
@@ -177,6 +188,6 @@ defmodule CandleClock.Worker do
       repo().update_all(query, [])
     end
 
-    refresh_next_trigger(state)
+    state
   end
 end

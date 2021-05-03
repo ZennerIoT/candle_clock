@@ -4,11 +4,14 @@ defmodule CandleClock.MixProject do
   def project do
     [
       app: :candle_clock,
-      version: "0.1.1",
+      version: "1.0.0",
       elixir: "~> 1.9",
       start_permanent: Mix.env() == :prod,
       elixirc_paths: elixirc_paths(Mix.env()),
       deps: deps(),
+      description: "Manages persistent timers, intervals and cronjobs with a database table",
+      package: package(),
+      source_url: "https://github.com/zenneriot/candle_clock",
       aliases: [
         test: [
           # generate the schema to test if schema generation works
@@ -28,6 +31,13 @@ defmodule CandleClock.MixProject do
   def application do
     [
       extra_applications: [:logger]
+    ]
+  end
+
+  def package() do
+    [
+      licenses: ["MIT"],
+      links: %{"GitHub" => "https://github.com/zenneriot/candle_clock"}
     ]
   end
 

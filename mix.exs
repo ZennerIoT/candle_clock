@@ -50,7 +50,7 @@ defmodule CandleClock.MixProject do
       {:ecto_sql, ">= 3.0.0"},
       {:postgrex, "~> 0.15.3", only: :test},
       {:crontab, "~> 1.1"},
-      {:ex_doc, "~> 0.14", only: :dev, runtime: false},
+      {:ex_doc, "~> 0.26", only: :dev, runtime: false},
       {:tzdata, "~> 1.0"},
       {:jason, "~> 1.1"}
     ]

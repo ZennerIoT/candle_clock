@@ -98,6 +98,14 @@ defmodule CandleClock do
     }, opts)
   end
 
+  @spec call_at(mf_args, DateTime.t(), keyword) :: {:ok, struct} | {:error, any}
+  def call_at(mfa, date, opts \\ []) do
+    create(mfa, %{
+      expires_at: date,
+      max_calls: 1
+    }, opts)
+  end
+
   @doc """
   Creates a timer that is executed every `interval` ms.
 
@@ -239,6 +247,9 @@ defmodule CandleClock do
   @spec next_expiry(struct, DateTime.t) :: {:ok, DateTime.t} | {:error, any}
   def next_expiry(timer, date \\ DateTime.utc_now())
 
+  def next_expiry(%{expires_at: expires_at}, _) when not is_nil(expires_at) do
+    {:ok, expires_at}
+  end
   def next_expiry(%{skip_if_offline: true} = timer, date) do
     case timer do
       %{duration: duration, calls: 0} when not is_nil(duration) ->

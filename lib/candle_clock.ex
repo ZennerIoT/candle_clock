@@ -217,6 +217,7 @@ defmodule CandleClock do
       |> Map.put_new_lazy(:updated_at, fn -> DateTime.utc_now() end)
 
     id_type = timer_schema().__schema__(:type, :id)
+    schema_fields = timer_schema().__schema__(:fields)
 
     timers = Enum.map(timers, fn params ->
       # parse crontab
@@ -243,6 +244,7 @@ defmodule CandleClock do
 
       timer
       |> Map.put(:expires_at, expires_at)
+      |> Map.take(schema_fields)
       |> Map.drop([:__struct__, :__meta__])
     end)
 

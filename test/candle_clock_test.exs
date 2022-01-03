@@ -1,5 +1,5 @@
 defmodule CandleClockTest do
-  use ExUnit.Case
+  use CandleClock.DataCase
   doctest CandleClock
   alias CandleClock.Timer
 
@@ -50,5 +50,22 @@ defmodule CandleClockTest do
     assert {:ok, timer} = CandleClock.call_at({__MODULE__, :lol, []}, date)
     assert date = timer.expires_at
     assert {:ok, ^date} = CandleClock.next_expiry(timer, ~U[2020-01-01T13:00:00Z])
+  end
+
+  test "create_many/2" do
+    now = DateTime.utc_now()
+    alarm_date = DateTime.add(now, 2 * 24 * 3600, :second)
+
+    specs = [
+      _cron = %{crontab: "0 12 15 * *", crontab_timezone: "Europe/Berlin"},
+      _interval = %{interval: 10000, duration: 15000, max_calls: 7, inserted_at: now},
+      _duration = %{duration: 5000, max_calls: 1, name: "replace_me", inserted_at: now},
+      _date = %{expires_at: alarm_date, max_calls: 1},
+    ]
+
+    timers = [_cron, interval, duration, date] = CandleClock.create_many(specs)
+    assert duration.expires_at == DateTime.add(now, 5, :second)
+    assert date.expires_at == alarm_date
+    assert interval.expires_at == DateTime.add(now, 15, :second)
   end
 end

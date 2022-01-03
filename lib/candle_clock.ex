@@ -160,6 +160,100 @@ defmodule CandleClock do
   end
 
   @doc """
+  Creates a list of timers at once (using insert_all).
+
+  Schemas for the different timer types:
+
+  ## For all timer types
+
+      %{
+        module: module(),
+        function: atom(),
+        arguments: list(),
+        inserted_at: DateTime.t(),
+        updated_at: DateTime.t()
+      }
+      as well as any custom fields defined in the candle clock timer schema.
+
+  ## Duration
+
+      %{
+        duration: non_neg_integer(), # milliseconds
+        max_calls: 1
+      }
+
+  # Interval
+
+      %{
+        duration: non_neg_integer(), # milliseconds
+        interval: non_neg_integer(), # milliseconds
+        max_calls: nil | non_neg_integer() # nil for unlimited calls
+      }
+
+  # Once, at a specific date and time
+
+      %{
+        expires_at: DateTime.t(),
+        max_calls: 1
+      }
+
+  # Cron
+
+      %{
+        crontab: Crontab.CronExpression.t(),
+        crontab_timezone: binary() # "Europe/Berlin" for example.
+      }
+  """
+  @type cron_timer_spec :: %{crontab: Crontab.CronExpression.t(), crontab_timezone: binary()}
+  @type interval_timer_spec :: %{duration: non_neg_integer(), interval: non_neg_integer(), max_calls: nil | non_neg_integer()}
+  @type duration_timer_spec :: %{duration: non_neg_integer(), max_calls: 1}
+  @type alarm_spec :: %{expires_at: DateTime.t(), max_calls: 1}
+  @type timer_spec :: cron_timer_spec | duration_timer_spec | interval_timer_spec | alarm_spec
+  @spec create_many([timer_spec], keyword) :: [struct()]
+  def create_many(timers, opts \\ []) do
+    opts_map =
+      Enum.into(opts, %{})
+      |> Map.put_new_lazy(:inserted_at, fn -> DateTime.utc_now() end)
+      |> Map.put_new_lazy(:updated_at, fn -> DateTime.utc_now() end)
+
+    id_type = timer_schema().__schema__(:type, :id)
+
+    timers = Enum.map(timers, fn params ->
+      # parse crontab
+      params = if Map.has_key?(params, :crontab) do
+        Map.update!(params, :crontab, fn
+          bin when is_binary(bin) -> Crontab.CronExpression.Parser.parse!(bin)
+          %Crontab.CronExpression{} = expr -> expr
+        end)
+      else
+        params
+      end
+
+      # merge opts
+      params = Map.merge(opts_map, params)
+
+      # calculate expires at
+      timer = struct(timer_schema(), params)
+      {:ok, expires_at} = next_expiry(timer, DateTime.utc_now())
+
+      timer = case id_type do
+        uuid when uuid in [:binary, Ecto.UUID] -> Map.put(timer, :id, Ecto.UUID.generate())
+        _ -> Map.drop(timer, [:id])
+      end
+
+      timer
+      |> Map.put(:expires_at, expires_at)
+      |> Map.drop([:__struct__, :__meta__])
+    end)
+
+    earliest = Enum.min_by(timers, &(&1.expires_at), &(DateTime.compare(&1, &2) == :lt))
+
+    {_, timers} = repo().insert_all(timer_schema(), timers, on_conflict: :replace_all, conflict_target: [:name], returning: true)
+    refresh_next_timer(earliest.expires_at)
+    timers
+  end
+
+  @doc """
   Cancels a timer by its ID.
 
   Returns `{:ok, 1}` if the ID matched.

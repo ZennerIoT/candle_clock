@@ -33,11 +33,12 @@ defmodule CandleClock.Worker do
   ]
 
   def next_expiry_query() do
-    from t in timer_schema(),
+    from(t in timer_schema(),
       select: t.expires_at,
       where: not t.executing,
       order_by: [asc: t.expires_at],
       limit: 1
+    )
   end
 
   @doc """
@@ -72,19 +73,21 @@ defmodule CandleClock.Worker do
 
   @doc false
   def handle_call({:set_next_expiry, expires_at}, _from, state) do
-    state = case state.expires_at do
-      nil ->
-        start_timer(state, expires_at)
+    state =
+      case state.expires_at do
+        nil ->
+          start_timer(state, expires_at)
 
-      old_expires_at ->
-        case DateTime.compare(old_expires_at, expires_at) do
-          :gt ->
-            start_timer(state, expires_at)
+        old_expires_at ->
+          case DateTime.compare(old_expires_at, expires_at) do
+            :gt ->
+              start_timer(state, expires_at)
 
-          _lt_or_eq ->
-            state
-        end
-    end
+            _lt_or_eq ->
+              state
+          end
+      end
+
     {:reply, :ok, state}
   end
 
@@ -129,7 +132,10 @@ defmodule CandleClock.Worker do
         %{state | timer_ref: ref, expires_at: expires_at}
 
       diff ->
-        Logger.debug("while refreshing next expiry, we found timers that expired #{diff} ms in the past")
+        Logger.debug(
+          "while refreshing next expiry, we found timers that expired #{diff} ms in the past"
+        )
+
         state
         |> execute_one()
         |> refresh_next_trigger()
@@ -138,12 +144,14 @@ defmodule CandleClock.Worker do
 
   defp execute_one(state) do
     repo().transaction(fn ->
-      query = from t in timer_schema(),
-        where: t.expires_at < ^DateTime.utc_now(),
-        where: not t.executing,
-        order_by: [asc: t.expires_at],
-        limit: 1,
-        lock: "FOR UPDATE"
+      query =
+        from(t in timer_schema(),
+          where: t.expires_at < ^DateTime.utc_now(),
+          where: not t.executing or t.expires_at < ago(1, "hour"),
+          order_by: [asc: t.expires_at],
+          limit: 1,
+          lock: "FOR UPDATE"
+        )
 
       case repo().one(query) do
         nil ->
@@ -152,10 +160,13 @@ defmodule CandleClock.Worker do
           nil
 
         timer ->
-          update = from t in timer_schema(),
-            where: t.id == ^timer.id,
-            update: [set: [executing: true]],
-            select: t
+          update =
+            from(t in timer_schema(),
+              where: t.id == ^timer.id,
+              update: [set: [executing: true]],
+              select: t
+            )
+
           case repo().update_all(update, []) do
             {1, [timer]} -> timer
             _ -> raise RuntimeError
@@ -172,13 +183,18 @@ defmodule CandleClock.Worker do
   defp execute_timer(state, timer) do
     # TODO use a pool
     # TODO what to do with the result? ignore?
-    Logger.debug("executing timer #{inspect timer.module}.#{timer.function}(#{Enum.join(Enum.map(timer.arguments, &inspect/1), ", ")})")
+    Logger.debug(
+      "executing timer #{inspect(timer.module)}.#{timer.function}(#{Enum.join(Enum.map(timer.arguments, &inspect/1), ", ")})"
+    )
+
     Task.start(fn ->
       try do
         apply(timer.module, timer.function, timer.arguments)
       rescue
         error ->
-          log_error_raw("[CandleClock] Timer execution failed:", :error, error, :error, timer: timer)
+          log_error_raw("[CandleClock] Timer execution failed:", :error, error, :error,
+            timer: timer
+          )
       catch
         kind, error ->
           log_error_raw("[CandleClock] Timer execution failed:", kind, error, :error, timer: timer)
@@ -199,13 +215,16 @@ defmodule CandleClock.Worker do
       {:ok, _} = repo().delete(timer)
     else
       updates = Map.take(timer, [:expires_at, :executing, :calls]) |> Enum.into([])
-      query = from t in timer_schema(),
-        where: t.id == ^timer.id,
-        update: [set: ^updates]
+
+      query =
+        from(t in timer_schema(),
+          where: t.id == ^timer.id,
+          update: [set: ^updates]
+        )
 
       repo().update_all(query, [])
     end
 
-    %{ state | expires_at: nil }
+    %{state | expires_at: nil}
   end
 end

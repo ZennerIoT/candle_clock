@@ -210,7 +210,9 @@ defmodule CandleClock do
   @type alarm_spec :: %{expires_at: DateTime.t(), max_calls: 1}
   @type timer_spec :: cron_timer_spec | duration_timer_spec | interval_timer_spec | alarm_spec
   @spec create_many([timer_spec], keyword) :: [struct()]
-  def create_many(timers, opts \\ []) do
+  def create_many(timers, opts \\ [])
+  def create_many([], _), do: []
+  def create_many(timers, opts) do
     opts_map =
       Enum.into(opts, %{})
       |> Map.put_new_lazy(:inserted_at, fn -> DateTime.utc_now() end)

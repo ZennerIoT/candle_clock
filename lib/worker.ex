@@ -35,7 +35,7 @@ defmodule CandleClock.Worker do
   def next_expiry_query() do
     from(t in timer_schema(),
       select: t.expires_at,
-      where: not t.executing,
+      where: not t.executing or t.expires_at < ago(1, "month"),
       order_by: [asc: t.expires_at],
       limit: 1
     )

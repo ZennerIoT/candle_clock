@@ -345,8 +345,12 @@ defmodule CandleClock do
   @spec next_expiry(struct, DateTime.t) :: {:ok, DateTime.t} | {:error, any}
   def next_expiry(timer, date \\ DateTime.utc_now())
 
-  def next_expiry(%{expires_at: expires_at}, _) when not is_nil(expires_at) do
-    {:ok, expires_at}
+  def next_expiry(%{expires_at: expires_at} = timer, date) when not is_nil(expires_at) do
+    if DateTime.compare(expires_at, date) == :lt do
+      next_expiry(%{timer | expires_at: nil}, date)
+    else
+      {:ok, expires_at}
+    end
   end
   def next_expiry(%{skip_if_offline: true} = timer, date) do
     case timer do

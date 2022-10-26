@@ -66,6 +66,8 @@ defmodule CandleClock do
    * `:name` (string) A name that makes this timer unique. Unique timers will
      be replaced when a new timer with the same name is created. That way, a
      defer can be implemented simply by always giving the same name.
+   * `:if_not_exists` (bool, default: `false`) If set to true, will not create
+     the timer if one already exists with that name. Requires a `name` to be set.
    * `:skip_if_offline` (bool, default: `true`) If set to false, interval and
      cron timers behave differently after a long downtime of the system. See
      also: [Startup behaviour](#module-startup-behaviour)
@@ -151,10 +153,19 @@ defmodule CandleClock do
     params = Enum.reduce([Enum.into(opts, %{}), defaults, params], %{}, &Map.merge/2)
     timer = struct(timer_schema(), params)
 
+    on_conflict = case Keyword.get(opts, :if_not_exists, false) do
+      true ->
+        if not Keyword.has_key?(opts, :name), do: raise ArgumentError, "if_not_exists requires a name to be set"
+        {:replace, [:updated_at]}
+
+      false ->
+        :replace_all
+    end
+
     with {:ok, expires_at} <- next_expiry(timer, now),
          timer = Map.put(timer, :expires_at, expires_at),
-         {:ok, timer} <- repo().insert(timer, on_conflict: :replace_all, conflict_target: [:name]),
-         refresh_next_timer(expires_at) do
+         {:ok, timer} <- repo().insert(timer, on_conflict: on_conflict, conflict_target: [:name], returning: true),
+         refresh_next_timer(timer.expires_at) do
       {:ok, timer}
     end
   end

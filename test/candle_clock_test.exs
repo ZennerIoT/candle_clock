@@ -68,4 +68,9 @@ defmodule CandleClockTest do
     assert date.expires_at == alarm_date
     assert interval.expires_at == DateTime.add(now, 15, :second)
   end
+
+  test "if_not_exists will skip timer creation if a timer with that name already exists" do
+    assert {:ok, timer} = CandleClock.call_after({IO, :puts, ["hello"]}, :timer.hours(2), name: "say_hello")
+    assert {:ok, %{arguments: ["hello"]}} = CandleClock.call_after({IO, :puts, ["hello world"]}, :timer.hours(2), name: "say_hello", if_not_exists: true)
+  end
 end

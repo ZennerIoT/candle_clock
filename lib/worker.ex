@@ -149,7 +149,6 @@ defmodule CandleClock.Worker do
     end
   end
 
-  # TODO checkout
   defp execute_one(state) do
     repo().transaction(fn ->
       query =
@@ -188,7 +187,6 @@ defmodule CandleClock.Worker do
     end
   end
 
-  # TODO checkout
   defp execute_timer(state, timer) do
     # TODO use a pool
     # TODO what to do with the result? ignore?

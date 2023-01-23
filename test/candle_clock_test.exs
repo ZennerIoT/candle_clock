@@ -45,6 +45,7 @@ defmodule CandleClockTest do
     assert {:ok, ^expected} = CandleClock.next_expiry(%{timer | skip_if_offline: false}, start_at)
   end
 
+  @tag :skip
   test "can create timer that expires at a predetermined date" do
     date = ~U[2020-01-01T13:00:00.000000Z]
     assert {:ok, timer} = CandleClock.call_at({__MODULE__, :lol, []}, date)

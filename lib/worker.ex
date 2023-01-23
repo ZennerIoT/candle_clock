@@ -67,26 +67,28 @@ defmodule CandleClock.Worker do
 
   @doc false
   def handle_continue(_, state) do
-    state = refresh_next_trigger(state)
+    state = repo().checkout(fn -> refresh_next_trigger(state) end)
     {:noreply, state}
   end
 
   @doc false
   def handle_call({:set_next_expiry, expires_at}, _from, state) do
     state =
-      case state.expires_at do
-        nil ->
-          start_timer(state, expires_at)
+      repo().checkout(fn ->
+        case state.expires_at do
+          nil ->
+            start_timer(state, expires_at)
 
-        old_expires_at ->
-          case DateTime.compare(old_expires_at, expires_at) do
-            :gt ->
-              start_timer(state, expires_at)
+          old_expires_at ->
+            case DateTime.compare(old_expires_at, expires_at) do
+              :gt ->
+                start_timer(state, expires_at)
 
-            _lt_or_eq ->
-              state
-          end
-      end
+              _lt_or_eq ->
+                state
+            end
+        end
+      end)
 
     {:reply, :ok, state}
   end
@@ -94,9 +96,11 @@ defmodule CandleClock.Worker do
   @doc false
   def handle_info(:execute_timers, state) do
     state =
-      state
-      |> execute_one()
-      |> refresh_next_trigger()
+      repo().checkout(fn ->
+        state
+        |> execute_one()
+        |> refresh_next_trigger()
+      end)
 
     {:noreply, state}
   end
@@ -136,12 +140,16 @@ defmodule CandleClock.Worker do
           "while refreshing next expiry, we found timers that expired #{diff} ms in the past"
         )
 
-        state
-        |> execute_one()
-        |> refresh_next_trigger()
+
+        repo().checkout(fn ->
+          state
+          |> execute_one()
+          |> refresh_next_trigger()
+        end)
     end
   end
 
+  # TODO checkout
   defp execute_one(state) do
     repo().transaction(fn ->
       query =
@@ -180,6 +188,7 @@ defmodule CandleClock.Worker do
     end
   end
 
+  # TODO checkout
   defp execute_timer(state, timer) do
     # TODO use a pool
     # TODO what to do with the result? ignore?

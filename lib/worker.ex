@@ -187,7 +187,7 @@ defmodule CandleClock.Worker do
     end
   end
 
-  defp execute_timer(state, timer) do
+  def execute_timer(state, timer) do
     # TODO use a pool
     # TODO what to do with the result? ignore?
     Logger.debug(
@@ -195,17 +195,8 @@ defmodule CandleClock.Worker do
     )
 
     Task.start(fn ->
-      try do
-        apply(timer.module, timer.function, timer.arguments)
-      rescue
-        error ->
-          log_error_raw("[CandleClock] Timer execution failed:", :error, error, :error,
-            timer: timer
-          )
-      catch
-        kind, error ->
-          log_error_raw("[CandleClock] Timer execution failed:", kind, error, :error, timer: timer)
-      end
+      Logger.metadata(timer: timer)
+      apply(timer.module, timer.function, timer.arguments)
     end)
 
     {:ok, expires_at} = CandleClock.next_expiry(timer)

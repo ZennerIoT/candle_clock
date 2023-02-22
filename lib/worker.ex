@@ -1,6 +1,5 @@
 defmodule CandleClock.Worker do
   use GenServer
-  import CandleClock.ErrorLogger
 
   import Ecto.Query
   import CandleClock, only: [timer_schema: 0, repo: 0]

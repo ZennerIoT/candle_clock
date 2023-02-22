@@ -4,7 +4,7 @@ defmodule CandleClock.MixProject do
   def project do
     [
       app: :candle_clock,
-      version: "1.4.0",
+      version: "1.5.0",
       elixir: "~> 1.9",
       start_permanent: Mix.env() == :prod,
       elixirc_paths: elixirc_paths(Mix.env()),

@@ -381,6 +381,10 @@ defmodule CandleClock do
              {:ok, with_tz} <- DateTime.from_naive(naive, timer.crontab_timezone) do
           with_tz = Map.put(with_tz, :microsecond, {0, 6})
           DateTime.shift_zone(with_tz, "Etc/UTC")
+        else
+          {:ambiguous, first_dt, _second_dt} -> {:ok, first_dt}
+          {:gap, _just_before, just_after} -> {:ok, just_after}
+          other_error -> other_error
         end
     end
   end

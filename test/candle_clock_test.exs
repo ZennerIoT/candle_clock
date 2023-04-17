@@ -74,4 +74,14 @@ defmodule CandleClockTest do
     assert {:ok, timer} = CandleClock.call_after({IO, :puts, ["hello"]}, :timer.hours(2), name: "say_hello")
     assert {:ok, %{arguments: ["hello"]}} = CandleClock.call_after({IO, :puts, ["hello world"]}, :timer.hours(2), name: "say_hello", if_not_exists: true)
   end
+
+  test "crontab respects time change gaps/ambiguosity" do
+    timer = %Timer{
+      crontab: Crontab.CronExpression.Parser.parse!("0 2 * * *"),
+      crontab_timezone: "Europe/Berlin"
+    }
+
+    assert {:ok, _} = CandleClock.next_expiry(timer, ~U[2023-03-26T00:00:00Z])
+    assert {:ok, _} = CandleClock.next_expiry(timer, ~U[2023-10-29T00:00:00Z])
+  end
 end
